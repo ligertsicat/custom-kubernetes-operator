@@ -72,6 +72,9 @@ spec:
         - --leader-elect
         image: controller:latest
         name: manager
+        env:
+        - name: DUMMY_IMAGE 
+          value: nginxinc/nginx-unprivileged:latest
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

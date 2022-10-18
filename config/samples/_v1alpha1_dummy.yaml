@@ -1,0 +1,10 @@
+apiVersion: interview.com/v1alpha1
+kind: Dummy
+metadata:
+  name: dummy-sample
+spec:
+  # TODO(user): edit the following value to ensure the number 
+  # of Pods/Instances your Operand must have on cluster        
+  size: 1
+
+  
