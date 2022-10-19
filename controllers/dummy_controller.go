@@ -142,7 +142,8 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Log the dummy name, namespace, and message
 	//
-	log.Info("DummyName:", dummy.Name, "Dummy Namespace: ", dummy.Namespace, "Dummy Message:", dummy.Spec.Message)
+	log.Info("Logging dummy info",
+		"Name", dummy.Name, "Namespace", dummy.Namespace, "Message", dummy.Spec.Message)
 
 	if err := r.Status().Update(ctx, dummy); err != nil {
 		log.Error(err, "Failed to update Dummy status")
