@@ -66,6 +66,8 @@ custom-kubernetes-operator-system   custom-kubernetes-operator-controller-manage
 
 ```
 
+### Creating the dummy object
+
 To create the Dummy object, apply the sample yaml. A new pod running nginx should appear
 ```
 $ kubectl apply -f config/samples/_v1alpha1_dummy.yaml 
@@ -76,6 +78,8 @@ NAMESPACE                           NAME                                        
 custom-kubernetes-operator-system   custom-kubernetes-operator-controller-manager-9f7fc8fbb-wg5zs   2/2     Running   0                2m46s
 default                             dummy-sample-749f6d77cc-mfrvg                                   1/1     Running   0                6s
 ```
+
+### Check Nginx pod
 
 We can verifiy that nginx is running in the dummy-sample-* pod
 ```
@@ -90,6 +94,8 @@ kubectl logs dummy-sample-749f6d77cc-mfrvg (example)
 2022/10/19 04:36:21 [notice] 1#1: start worker process 28
 2022/10/19 04:36:21 [notice] 1#1: start worker process 29
 ```
+
+### Verify yaml
 
 We can check the dummy yaml to verify that the spec has been copied to the status.echoSpec, and that the podStatus is correctly `Running`
 ```
@@ -117,10 +123,49 @@ status:
 
 ### Shutting down
 To stop the deployment, run these commands
+After executing the delete, the nginx pod associated with the dummy object will be terminated too
 ``` 
 kubectl delete -f config/samples/_v1alpha1_dummy.yaml
+
+NAMESPACE                           NAME                                                            READY   STATUS    RESTARTS       AGE
+custom-kubernetes-operator-system   custom-kubernetes-operator-controller-manager-9f7fc8fbb-f2949   2/2     Running   0              9m3s
+
+
 make undeploy
 ```
 
 
+
+### Test Results
+
+We create the deployment and verifiy that the controller is created
+```
+make deploy
+```
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot1.PNG?raw=true)
+
+After that we can apply the dummy yaml
+```
+kubectl apply -f config/samples/_v1alpha1_dummy.yaml 
+```
+An nginx pod associated with the Dummy API will be created
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot2.PNG?raw=true)
+
+The dummy name, namespace, and message are logged in the controller
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot3.PNG?raw=true)
+
+The pod is running nginx
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot4.PNG?raw=true)
+
+The yaml status.echoSpec and status.podStatus are correctly set to "I'm a dummy" and "Running"
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot5.PNG?raw=true)
+
+Deleting the Dummy API results in the nginx pod being also terminated
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot6.PNG?raw=true)
+
+```
+make test
+```
+Unit tests are successful
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/screenshot6.PNG?raw=true)
 
