@@ -142,26 +142,26 @@ We create the deployment and verifiy that the controller is created
 ```
 make deploy
 ```
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/screenshot1.PNG?raw=true)
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/blob/screenshot1.PNG?raw=true)
 
 After that we can apply the dummy yaml
 ```
 kubectl apply -f config/samples/_v1alpha1_dummy.yaml 
 ```
 An nginx pod associated with the Dummy API will be created
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/screenshot2.PNG?raw=true)
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/blob/screenshot2.PNG?raw=true)
 
 The dummy name, namespace, and message are logged in the controller
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/screenshot3.PNG?raw=true)
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/blob/screenshot3.PNG?raw=true)
 
 The pod is running nginx
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/screenshot4.PNG?raw=true)
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/blob/screenshot4.PNG?raw=true)
 
 The yaml status.echoSpec and status.podStatus are correctly set to "I'm a dummy" and "Running"
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/screenshot5.PNG?raw=true)
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/blob/screenshot5.PNG?raw=true)
 
 Deleting the Dummy API results in the nginx pod being also terminated
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/screenshot6.PNG?raw=true)
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/test/update-readme/blob/screenshot6.PNG?raw=true)
 
 ```
 make test
