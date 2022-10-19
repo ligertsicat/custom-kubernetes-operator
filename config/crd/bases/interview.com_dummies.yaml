@@ -36,25 +36,17 @@ spec:
             description: DummySpec defines the desired state of Dummy
             properties:
               message:
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
+                description: 'Message that will be propagated to echoSpec'
                 type: string
             type: object
           status:
             description: DummyStatus defines the observed state of Dummy
             properties:
               echoSpec:
-                description: 'Represents the observations of a Dummy''s current state.
-                  Dummy.status.conditions.type are: "Available", "Progressing", and
-                  "Degraded" Dummy.status.conditions.status are one of True, False,
-                  Unknown. Dummy.status.conditions.reason the value should be a CamelCase
-                  string and producers of specific condition types may define expected
-                  values and meanings for this field, and whether the values are considered
-                  a guaranteed API. Dummy.status.conditions.Message is a human readable
-                  message indicating details about the transition. For further information
-                  see: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                description: 'Contains the message from spec.message'
                 type: string
               podStatus:
+                description: 'Describes pod status. Can be Pending or Running'
                 type: string
             type: object
         type: object

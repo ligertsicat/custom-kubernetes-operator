@@ -3,9 +3,6 @@ kind: Dummy
 metadata:
   name: dummy-sample-2
 spec:
-  # TODO(user): edit the following value to ensure the number 
-  # of Pods/Instances your Operand must have on cluster  
-  size: 1      
   message: "I'm a dummy"
 
   

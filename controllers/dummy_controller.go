@@ -112,6 +112,8 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 
+		// Set podStatus as running when deployment is successfully created
+		//
 		dummy.Status.PodStatus = statusRunning
 		if err := r.Status().Update(ctx, dummy); err != nil {
 			log.Error(err, "Failed to update Dummy status")
@@ -128,14 +130,19 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	// Let's just set the status as Unknown when no status are available
+	// Set the default dummy podStatus as pending
+	//
 	if dummy.Status.PodStatus == "" {
 		dummy.Status.PodStatus = statusPending
 	}
 
+	// Propagate spec.message to status.echoSpec
+	//
 	dummy.Status.EchoSpec = dummy.Spec.Message
 
-	log.Info("Deployment.Namespace", dummy.Name, "Deployment.Name", dummy.Namespace, dummy.Spec.Message)
+	// Log the dummy name, namespace, and message
+	//
+	log.Info("DummyName:", dummy.Name, "Dummy Namespace: ", dummy.Namespace, "Dummy Message:", dummy.Spec.Message)
 
 	if err := r.Status().Update(ctx, dummy); err != nil {
 		log.Error(err, "Failed to update Dummy status")

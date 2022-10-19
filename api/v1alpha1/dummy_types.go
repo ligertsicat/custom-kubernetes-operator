@@ -20,26 +20,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // DummySpec defines the desired state of Dummy
 type DummySpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Message string `json:"message,omitempty"`
 }
 
 // DummyStatus defines the observed state of Dummy
 type DummyStatus struct {
-	// Represents the observations of a Dummy's current state.
-	// Dummy.status.conditions.type are: "Available", "Progressing", and "Degraded"
-	// Dummy.status.conditions.status are one of True, False, Unknown.
-	// Dummy.status.conditions.reason the value should be a CamelCase string and producers of specific
-	// condition types may define expected values and meanings for this field, and whether the values
-	// are considered a guaranteed API.
-	// Dummy.status.conditions.Message is a human readable message indicating details about the transition.
-	// For further information see: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 	EchoSpec  string `json:"echoSpec,omitempty"`
 	PodStatus string `json:"podStatus,omitempty"`
 }
