@@ -26,27 +26,23 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	interviewcomv1alpha1 "github.com/ligertsicat/custom-kubernetes-operator/api/v1alpha1"
 )
 
-const dummyFinalizer = ".interview.com/finalizer"
+const dummyFinalizer = "interview.com/finalizer"
 
-// Definitions to manage status conditions
+// Definitions to manage pod status conditions
 const (
-	// typeAvailableDummy represents the status of the Deployment reconciliation
-	typeAvailableDummy = "Available"
-	// typeDegradedDummy represents the status used when the custom resource is deleted and the finalizer operations are must to occur.
-	typeDegradedDummy = "Degraded"
+	statusRunning = "Running"
+	statusPending = "Pending"
 )
 
 // DummyReconciler reconciles a Dummy object
@@ -99,98 +95,6 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	// Let's just set the status as Unknown when no status are available
-	if dummy.Status.Conditions == nil || len(dummy.Status.Conditions) == 0 {
-		meta.SetStatusCondition(&dummy.Status.Conditions, metav1.Condition{Type: typeAvailableDummy, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
-		if err = r.Status().Update(ctx, dummy); err != nil {
-			log.Error(err, "Failed to update Dummy status")
-			return ctrl.Result{}, err
-		}
-
-		// Let's re-fetch the dummy Custom Resource after update the status
-		// so that we have the latest state of the resource on the cluster and we will avoid
-		// raise the issue "the object has been modified, please apply
-		// your changes to the latest version and try again" which would re-trigger the reconciliation
-		// if we try to update it again in the following operations
-		if err := r.Get(ctx, req.NamespacedName, dummy); err != nil {
-			log.Error(err, "Failed to re-fetch dummy")
-			return ctrl.Result{}, err
-		}
-	}
-
-	// Let's add a finalizer. Then, we can define some operations which should
-	// occurs before the custom resource to be deleted.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
-	if !controllerutil.ContainsFinalizer(dummy, dummyFinalizer) {
-		log.Info("Adding Finalizer for Dummy")
-		if ok := controllerutil.AddFinalizer(dummy, dummyFinalizer); !ok {
-			log.Error(err, "Failed to add finalizer into the custom resource")
-			return ctrl.Result{Requeue: true}, nil
-		}
-
-		if err = r.Update(ctx, dummy); err != nil {
-			log.Error(err, "Failed to update custom resource to add finalizer")
-			return ctrl.Result{}, err
-		}
-	}
-
-	// Check if the Dummy instance is marked to be deleted, which is
-	// indicated by the deletion timestamp being set.
-	isDummyMarkedToBeDeleted := dummy.GetDeletionTimestamp() != nil
-	if isDummyMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(dummy, dummyFinalizer) {
-			log.Info("Performing Finalizer Operations for Dummy before delete CR")
-
-			// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
-			meta.SetStatusCondition(&dummy.Status.Conditions, metav1.Condition{Type: typeDegradedDummy,
-				Status: metav1.ConditionUnknown, Reason: "Finalizing",
-				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", dummy.Name)})
-
-			if err := r.Status().Update(ctx, dummy); err != nil {
-				log.Error(err, "Failed to update Dummy status")
-				return ctrl.Result{}, err
-			}
-
-			// Perform all operations required before remove the finalizer and allow
-			// the Kubernetes API to remove the custom resource.
-			r.doFinalizerOperationsForDummy(dummy)
-
-			// TODO(user): If you add operations to the doFinalizerOperationsForDummy method
-			// then you need to ensure that all worked fine before deleting and updating the Downgrade status
-			// otherwise, you should requeue here.
-
-			// Re-fetch the dummy Custom Resource before update the status
-			// so that we have the latest state of the resource on the cluster and we will avoid
-			// raise the issue "the object has been modified, please apply
-			// your changes to the latest version and try again" which would re-trigger the reconciliation
-			if err := r.Get(ctx, req.NamespacedName, dummy); err != nil {
-				log.Error(err, "Failed to re-fetch dummy")
-				return ctrl.Result{}, err
-			}
-
-			meta.SetStatusCondition(&dummy.Status.Conditions, metav1.Condition{Type: typeDegradedDummy,
-				Status: metav1.ConditionTrue, Reason: "Finalizing",
-				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", dummy.Name)})
-
-			if err := r.Status().Update(ctx, dummy); err != nil {
-				log.Error(err, "Failed to update Dummy status")
-				return ctrl.Result{}, err
-			}
-
-			log.Info("Removing Finalizer for Dummy after successfully perform the operations")
-			if ok := controllerutil.RemoveFinalizer(dummy, dummyFinalizer); !ok {
-				log.Error(err, "Failed to remove finalizer for Dummy")
-				return ctrl.Result{Requeue: true}, nil
-			}
-
-			if err := r.Update(ctx, dummy); err != nil {
-				log.Error(err, "Failed to remove finalizer for Dummy")
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, nil
-	}
-
 	// Check if the deployment already exists, if not create a new one
 	found := &appsv1.Deployment{}
 	err = r.Get(ctx, types.NamespacedName{Name: dummy.Name, Namespace: dummy.Namespace}, found)
@@ -199,25 +103,20 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		dep, err := r.deploymentForDummy(dummy)
 		if err != nil {
 			log.Error(err, "Failed to define new Deployment resource for Dummy")
-
-			// The following implementation will update the status
-			meta.SetStatusCondition(&dummy.Status.Conditions, metav1.Condition{Type: typeAvailableDummy,
-				Status: metav1.ConditionFalse, Reason: "Reconciling",
-				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", dummy.Name, err)})
-
-			if err := r.Status().Update(ctx, dummy); err != nil {
-				log.Error(err, "Failed to update Dummy status")
-				return ctrl.Result{}, err
-			}
-
 			return ctrl.Result{}, err
 		}
 
-		log.Info("Creating a new Deployment",
-			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		if err = r.Create(ctx, dep); err != nil {
 			log.Error(err, "Failed to create new Deployment",
 				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Set podStatus as running when deployment is successfully created
+		//
+		dummy.Status.PodStatus = statusRunning
+		if err := r.Status().Update(ctx, dummy); err != nil {
+			log.Error(err, "Failed to update Dummy status")
 			return ctrl.Result{}, err
 		}
 
@@ -231,49 +130,20 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	// The CRD API is defining that the Dummy type, have a DummySpec.Size field
-	// to set the quantity of Deployment instances is the desired state on the cluster.
-	// Therefore, the following code will ensure the Deployment size is the same as defined
-	// via the Size spec of the Custom Resource which we are reconciling.
-	size := dummy.Spec.Size
-	if *found.Spec.Replicas != size {
-		found.Spec.Replicas = &size
-		if err = r.Update(ctx, found); err != nil {
-			log.Error(err, "Failed to update Deployment",
-				"Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
-
-			// Re-fetch the dummy Custom Resource before update the status
-			// so that we have the latest state of the resource on the cluster and we will avoid
-			// raise the issue "the object has been modified, please apply
-			// your changes to the latest version and try again" which would re-trigger the reconciliation
-			if err := r.Get(ctx, req.NamespacedName, dummy); err != nil {
-				log.Error(err, "Failed to re-fetch dummy")
-				return ctrl.Result{}, err
-			}
-
-			// The following implementation will update the status
-			meta.SetStatusCondition(&dummy.Status.Conditions, metav1.Condition{Type: typeAvailableDummy,
-				Status: metav1.ConditionFalse, Reason: "Resizing",
-				Message: fmt.Sprintf("Failed to update the size for the custom resource (%s): (%s)", dummy.Name, err)})
-
-			if err := r.Status().Update(ctx, dummy); err != nil {
-				log.Error(err, "Failed to update Dummy status")
-				return ctrl.Result{}, err
-			}
-
-			return ctrl.Result{}, err
-		}
-
-		// Now, that we update the size we want to requeue the reconciliation
-		// so that we can ensure that we have the latest state of the resource before
-		// update. Also, it will help ensure the desired state on the cluster
-		return ctrl.Result{Requeue: true}, nil
+	// Set the default dummy podStatus as pending
+	//
+	if dummy.Status.PodStatus == "" {
+		dummy.Status.PodStatus = statusPending
 	}
 
-	// The following implementation will update the status
-	meta.SetStatusCondition(&dummy.Status.Conditions, metav1.Condition{Type: typeAvailableDummy,
-		Status: metav1.ConditionTrue, Reason: "Reconciling",
-		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", dummy.Name, size)})
+	// Propagate spec.message to status.echoSpec
+	//
+	dummy.Status.EchoSpec = dummy.Spec.Message
+
+	// Log the dummy name, namespace, and message
+	//
+	log.Info("Logging dummy info",
+		"Name", dummy.Name, "Namespace", dummy.Namespace, "Message", dummy.Spec.Message)
 
 	if err := r.Status().Update(ctx, dummy); err != nil {
 		log.Error(err, "Failed to update Dummy status")
@@ -283,31 +153,11 @@ func (r *DummyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{}, nil
 }
 
-// finalizeDummy will perform the required operations before delete the CR.
-func (r *DummyReconciler) doFinalizerOperationsForDummy(cr *interviewcomv1alpha1.Dummy) {
-	// TODO(user): Add the cleanup steps that the operator
-	// needs to do before the CR can be deleted. Examples
-	// of finalizers include performing backups and deleting
-	// resources that are not owned by this CR, like a PVC.
-
-	// Note: It is not recommended to use finalizers with the purpose of delete resources which are
-	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
-	// are defined as depended of the custom resource. See that we use the method ctrl.SetControllerReference.
-	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
-	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
-
-	// The following implementation will raise an event
-	r.Recorder.Event(cr, "Warning", "Deleting",
-		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
-			cr.Name,
-			cr.Namespace))
-}
-
 // deploymentForDummy returns a Dummy Deployment object
 func (r *DummyReconciler) deploymentForDummy(
 	dummy *interviewcomv1alpha1.Dummy) (*appsv1.Deployment, error) {
 	ls := labelsForDummy(dummy.Name)
-	replicas := dummy.Spec.Size
+	replicas := int32(1)
 
 	// Get the Operand image
 	image, err := imageForDummy()
