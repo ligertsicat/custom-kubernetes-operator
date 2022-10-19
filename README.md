@@ -167,5 +167,4 @@ Deleting the Dummy API results in the nginx pod being also terminated
 make test
 ```
 Unit tests are successful
-![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/screenshot6.PNG?raw=true)
-
+![alt text](https://github.com/ligertsicat/custom-kubernetes-operator/blob/master/blob/screenshot7.PNG?raw=true)
