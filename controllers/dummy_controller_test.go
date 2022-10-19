@@ -38,6 +38,7 @@ var _ = Describe("Dummy controller", func() {
 	Context("Dummy controller test", func() {
 
 		const DummyName = "test-dummy"
+		const testMessage = "I'm a dummy"
 
 		ctx := context.Background()
 
@@ -83,7 +84,7 @@ var _ = Describe("Dummy controller", func() {
 						Namespace: namespace.Name,
 					},
 					Spec: interviewcomv1alpha1.DummySpec{
-						Size: 1,
+						Message: testMessage,
 					},
 				}
 
@@ -113,20 +114,37 @@ var _ = Describe("Dummy controller", func() {
 				found := &appsv1.Deployment{}
 				return k8sClient.Get(ctx, typeNamespaceName, found)
 			}, time.Minute, time.Second).Should(Succeed())
-
-			By("Checking the latest Status Condition added to the Dummy instance")
+			By("Checking the latest echoSpec and podStatus after reconciliation")
 			Eventually(func() error {
-				if dummy.Status.Conditions != nil && len(dummy.Status.Conditions) != 0 {
-					latestStatusCondition := dummy.Status.Conditions[len(dummy.Status.Conditions)-1]
-					expectedLatestStatusCondition := metav1.Condition{Type: typeAvailableDummy,
-						Status: metav1.ConditionTrue, Reason: "Reconciling",
-						Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", dummy.Name, dummy.Spec.Size)}
-					if latestStatusCondition != expectedLatestStatusCondition {
-						return fmt.Errorf("The latest status condition added to the dummy instance is not as expected")
-					}
+
+				dummyReconciler := &DummyReconciler{
+					Client: k8sClient,
+					Scheme: k8sClient.Scheme(),
+				}
+
+				_, err = dummyReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespaceName,
+				})
+
+				err := k8sClient.Get(ctx, typeNamespaceName, dummy)
+				if err != nil {
+					return err
+				}
+
+				if dummy.Spec.Message != testMessage {
+					return fmt.Errorf("Expected message is %s. Received %s", testMessage, dummy.Spec.Message)
+				}
+
+				if dummy.Status.EchoSpec != testMessage {
+					return fmt.Errorf("Expected echoSpec is %s. Received %s", testMessage, dummy.Status.EchoSpec)
+				}
+				if dummy.Status.PodStatus != statusRunning {
+					return fmt.Errorf("Expected podStatus is %s. Received %s", statusRunning, dummy.Status.PodStatus)
+
 				}
 				return nil
 			}, time.Minute, time.Second).Should(Succeed())
+
 		})
 	})
 })
